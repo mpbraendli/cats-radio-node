@@ -1,5 +1,5 @@
 fn main() {
-    println!("cargo:rerun-if-changed=templates/");
+    println!("cargo:rerun-if-changed=templates/*");
 
     let dir: String = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let input = format!("{dir}/style.css");

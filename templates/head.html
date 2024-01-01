@@ -9,32 +9,34 @@
     <!-- <script src="/static/index.js" defer></script> -->
   </head>
   <body>
-    <nav>
-      <div class="h-full p-3 space-y-2 w-60 bg-white text-gray-800">
-        <div class="h-full p-3 space-y-2 bg-white text-gray-800">
-          <p class="text-lg font-semibold">CATS Radio Node {{ callsign }}</p>
-        </div>
+    <div class="flex">
+      <nav class="flex-none">
+        <div class="h-full min-h-screen p-3 space-y-2 w-60 bg-gray-100 text-gray-800">
+          <div class="p-3 space-y-2 bg-gray-100 text-gray-800">
+            <p class="text-lg">CATS Radio Node</p>
+            <p class="text-lg font-semibold">{{ callsign }}</p>
+          </div>
 
-        <div class="divide-y divide-gray-300">
-          <ul class="pt-2 pb-4 space-y-1 text-sm">
-            <li class="{% if page == ActivePage::Dashboard %} bg-gray-100 text-gray-900 {% endif %}">
-              <a href="/" class="flex items-center p-2 space-x-3 rounded-md">
-                <i class="fa fa-home" aria-hidden="true"></i><span>Dashboard</span>
-              </a>
-            </li>
-            <li class="{% if page == ActivePage::Incoming %} bg-gray-100 text-gray-900 {% endif %}">
-              <a href="/incoming" class="flex items-center p-2 space-x-3 rounded-md">
-                <i class="fa fa-inbox" aria-hidden="true"></i><span>Incoming</span>
-              </a>
-            </li>
-            <li class="{% if page == ActivePage::Send %} bg-gray-100 text-gray-900 {% endif %}">
-              <a href="/send" class="flex items-center p-2 space-x-3 rounded-md">
-                <i class="fa fa-paper-plane-o" aria-hidden="true"></i><span>Send</span>
-              </a>
-            </li>
-          </ul>
+          <div class="divide-y divide-gray-300">
+            <ul class="pt-2 pb-4 space-y-1 text-sm">
+              <li class="{% if page == ActivePage::Dashboard %} bg-gray-200 text-gray-900 {% endif %}">
+                <a href="/" class="flex items-center p-2 space-x-3 rounded-md">
+                  <i class="fa fa-home" aria-hidden="true"></i><span>Dashboard</span>
+                </a>
+              </li>
+              <li class="{% if page == ActivePage::Incoming %} bg-gray-200 text-gray-900 {% endif %}">
+                <a href="/incoming" class="flex items-center p-2 space-x-3 rounded-md">
+                  <i class="fa fa-inbox" aria-hidden="true"></i><span>Incoming</span>
+                </a>
+              </li>
+              <li class="{% if page == ActivePage::Send %} bg-gray-200 text-gray-900 {% endif %}">
+                <a href="/send" class="flex items-center p-2 space-x-3 rounded-md">
+                  <i class="fa fa-paper-plane-o" aria-hidden="true"></i><span>Send</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
-      </div>
-    </nav>
-    <main>
+      </nav>
+      <main class="flex-auto p-4">
 {# vi:set et sw=2 ts=2: #}

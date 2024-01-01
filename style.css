@@ -1,6 +1,7 @@
 @tailwind base;
 
 html {
+  @apply bg-white;
   font-family: sans-serif;
 }
 
@@ -15,25 +16,4 @@ h2 {
     @apply font-bold;
 }
 
-.toplevelbtn {
-    @apply border border-2 border-zinc-700 text-gray-800 rounded-md px-3 py-2 text-sm font-medium;
-    @apply hover:bg-gray-700 hover:text-white;
-}
-
-.toplevelbtn_active {
-    @apply bg-gray-900 text-white;
-}
-
-
-.fieldset {
-    @apply rounded-md border border-2 border-zinc-300 m-1 p-1 text-sm font-normal text-zinc-700;
-    @apply outline outline-blue-500/10 hover:outline-blue-500/30
-}
-
-.fieldset-legend {
-    @apply bg-zinc-100 w-max p-1;
-    font-variant: small-caps;
-    transform: translatey(-60%);
-    margin: 0.1em;
-}
 
