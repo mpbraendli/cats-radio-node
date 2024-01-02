@@ -270,7 +270,6 @@ dependencies = [
  "axum",
  "log",
  "serde",
- "serde_json",
  "simple_logger",
  "sqlx",
  "tokio",

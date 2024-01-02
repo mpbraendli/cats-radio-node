@@ -11,6 +11,8 @@ use axum::{
 use sqlx::{Connection, SqliteConnection};
 use tower_http::services::ServeDir;
 
+mod config;
+
 struct AppState {
     callsign : String,
     db : Mutex<SqliteConnection>
@@ -20,6 +22,9 @@ type SharedState = Arc<AppState>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+
+    // simple_logger::
+
     let mut conn = SqliteConnection::connect("sqlite:cats-radio-node.db").await.unwrap();
     sqlx::migrate!()
         .run(&mut conn)
@@ -35,6 +40,9 @@ async fn main() -> std::io::Result<()> {
 
     let app = Router::new()
         .route("/", get(dashboard))
+        .route("/incoming", get(incoming))
+        .route("/send", get(send))
+        .route("/settings", get(settings))
         .route("/form", get(show_form).post(accept_form))
         .nest_service("/static", ServeDir::new("static"))
         /* requires tracing and tower, e.g.
@@ -70,6 +78,7 @@ enum ActivePage {
     Dashboard,
     Incoming,
     Send,
+    Settings,
 }
 
 #[derive(Template)]
@@ -80,13 +89,59 @@ struct DashboardTemplate<'a> {
     callsign: String,
 }
 
-async fn dashboard(
-    State(state): State<SharedState>,
-    ) -> DashboardTemplate<'static> {
+async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
     DashboardTemplate {
         title: "Dashboard",
         callsign: state.callsign.clone(),
         page: ActivePage::Dashboard,
+    }
+}
+
+#[derive(Template)]
+#[template(path = "incoming.html")]
+struct IncomingTemplate<'a> {
+    title: &'a str,
+    page: ActivePage,
+    callsign: String,
+}
+
+async fn incoming(State(state): State<SharedState>) -> IncomingTemplate<'static> {
+    IncomingTemplate {
+        title: "Incoming",
+        callsign: state.callsign.clone(),
+        page: ActivePage::Incoming,
+    }
+}
+
+#[derive(Template)]
+#[template(path = "send.html")]
+struct SendTemplate<'a> {
+    title: &'a str,
+    page: ActivePage,
+    callsign: String,
+}
+
+async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
+    SendTemplate {
+        title: "Send",
+        callsign: state.callsign.clone(),
+        page: ActivePage::Send,
+    }
+}
+
+#[derive(Template)]
+#[template(path = "settings.html")]
+struct SettingsTemplate<'a> {
+    title: &'a str,
+    page: ActivePage,
+    callsign: String,
+}
+
+async fn settings(State(state): State<SharedState>) -> SettingsTemplate<'static> {
+    SettingsTemplate {
+        title: "Settings",
+        callsign: state.callsign.clone(),
+        page: ActivePage::Settings,
     }
 }
 

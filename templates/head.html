@@ -11,27 +11,32 @@
   <body>
     <div class="flex">
       <nav class="flex-none">
-        <div class="h-full min-h-screen p-3 space-y-2 w-60 bg-gray-100 text-gray-800">
-          <div class="p-3 space-y-2 bg-gray-100 text-gray-800">
+        <div class="h-full min-h-screen p-3 space-y-2 w-60 bg-sky-100 text-sky-800">
+          <div class="p-3 rounded-lg space-y-2 bg-sky-300 text-sky-900">
             <p class="text-lg">CATS Radio Node</p>
             <p class="text-lg font-semibold">{{ callsign }}</p>
           </div>
 
-          <div class="divide-y divide-gray-300">
-            <ul class="pt-2 pb-4 space-y-1 text-sm">
-              <li class="{% if page == ActivePage::Dashboard %} bg-gray-200 text-gray-900 {% endif %}">
-                <a href="/" class="flex items-center p-2 space-x-3 rounded-md">
-                  <i class="fa fa-home" aria-hidden="true"></i><span>Dashboard</span>
+          <div class="divide-y divide-sky-300">
+            <ul class="pt-2 pb-4 space-y-1 text-lg">
+              <li class="rounded-md p-3 {% if page == ActivePage::Dashboard %} bg-sky-200 text-sky-900 {% endif %} hover:bg-sky-300">
+                <a href="/" class="p-2 m-2">
+                  <i class="w-8 fa fa-home" aria-hidden="true"></i><span>Dashboard</span>
                 </a>
               </li>
-              <li class="{% if page == ActivePage::Incoming %} bg-gray-200 text-gray-900 {% endif %}">
-                <a href="/incoming" class="flex items-center p-2 space-x-3 rounded-md">
-                  <i class="fa fa-inbox" aria-hidden="true"></i><span>Incoming</span>
+              <li class="rounded-md p-3 {% if page == ActivePage::Incoming %} bg-sky-200 text-sky-900 {% endif %}">
+                <a href="/incoming" class="p-2 m-2">
+                  <i class="w-8 fa fa-inbox" aria-hidden="true"></i><span>Incoming</span>
                 </a>
               </li>
-              <li class="{% if page == ActivePage::Send %} bg-gray-200 text-gray-900 {% endif %}">
-                <a href="/send" class="flex items-center p-2 space-x-3 rounded-md">
-                  <i class="fa fa-paper-plane-o" aria-hidden="true"></i><span>Send</span>
+              <li class="rounded-md p-3 {% if page == ActivePage::Send %} bg-sky-200 text-sky-900 {% endif %}">
+                <a href="/send" class="p-2 m-2">
+                  <i class="w-8 fa fa-paper-plane-o" aria-hidden="true"></i><span>Send</span>
+                </a>
+              </li>
+              <li class="rounded-md p-3 {% if page == ActivePage::Settings %} bg-sky-200 text-sky-900 {% endif %}">
+                <a href="/settings" class="p-2 m-2">
+                  <i class="w-8 fa fa-cog" aria-hidden="true"></i><span>Settings</span>
                 </a>
               </li>
             </ul>
