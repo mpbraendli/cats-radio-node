@@ -1,6 +1,13 @@
 {% include "head.html" %}
 <div class="">
-  Settings!
+  <h1>Node Settings</h1>
+
+  <form action="/settings" method="post">
+    <div><label for="callsign">Callsign: <input class="textinput" type="text" name="callsign" value="{{ conf.callsign }}"></label></div>
+    <div><label for="ssid">SSID: <input class="textinput" type="number" name="ssid" value="{{ conf.ssid }}"></label></div>
+    <div><label for="icon">Icon: <input class="textinput" type="number" name="icon" value="{{ conf.icon }}"></label></div>
+    <div><input class="btn" type="submit" value="Update"></div>
+  </form>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}

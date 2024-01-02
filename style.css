@@ -16,4 +16,12 @@ h2 {
     @apply font-bold;
 }
 
+.btn {
+    @apply font-bold py-1 px-2 my-1 rounded;
+    @apply bg-sky-500 hover:bg-sky-600 text-white;
+}
+
+.textinput {
+    @apply rounded-md border border-2 border-zinc-200 px-1 py-1 text-sm font-normal text-zinc-700 outline outline-0 focus:border-2 focus:border-zinc-500 focus:outline-0 disabled:border-0 disabled:bg-zinc-50;
+}
 

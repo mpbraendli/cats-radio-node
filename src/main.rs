@@ -14,7 +14,7 @@ use tower_http::services::ServeDir;
 mod config;
 
 struct AppState {
-    callsign : String,
+    conf : config::Config,
     db : Mutex<SqliteConnection>
 }
 
@@ -31,10 +31,10 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("could not run SQLx migrations");
 
-    let callsign = "HB9EGM-0".to_owned();
+    let conf = config::Config::load().expect("Could not load config");
 
     let shared_state = Arc::new(AppState {
-        callsign,
+        conf,
         db: Mutex::new(conn)
     });
 
@@ -42,8 +42,7 @@ async fn main() -> std::io::Result<()> {
         .route("/", get(dashboard))
         .route("/incoming", get(incoming))
         .route("/send", get(send))
-        .route("/settings", get(settings))
-        .route("/form", get(show_form).post(accept_form))
+        .route("/settings", get(show_settings).post(post_settings))
         .nest_service("/static", ServeDir::new("static"))
         /* requires tracing and tower, e.g.
          *  tower = { version = "0.4", features = ["util", "timeout"] }
@@ -92,7 +91,7 @@ struct DashboardTemplate<'a> {
 async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
     DashboardTemplate {
         title: "Dashboard",
-        callsign: state.callsign.clone(),
+        callsign: state.conf.callsign.clone(),
         page: ActivePage::Dashboard,
     }
 }
@@ -108,7 +107,7 @@ struct IncomingTemplate<'a> {
 async fn incoming(State(state): State<SharedState>) -> IncomingTemplate<'static> {
     IncomingTemplate {
         title: "Incoming",
-        callsign: state.callsign.clone(),
+        callsign: state.conf.callsign.clone(),
         page: ActivePage::Incoming,
     }
 }
@@ -124,7 +123,7 @@ struct SendTemplate<'a> {
 async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
     SendTemplate {
         title: "Send",
-        callsign: state.callsign.clone(),
+        callsign: state.conf.callsign.clone(),
         page: ActivePage::Send,
     }
 }
@@ -135,49 +134,18 @@ struct SettingsTemplate<'a> {
     title: &'a str,
     page: ActivePage,
     callsign: String,
+    conf: config::Config,
 }
 
-async fn settings(State(state): State<SharedState>) -> SettingsTemplate<'static> {
+async fn show_settings(State(state): State<SharedState>) -> SettingsTemplate<'static> {
     SettingsTemplate {
         title: "Settings",
-        callsign: state.callsign.clone(),
+        callsign: state.conf.callsign.clone(),
         page: ActivePage::Settings,
+        conf: state.conf.clone(),
     }
 }
 
-async fn show_form() -> Html<&'static str> {
-    Html(
-        r#"
-        <!doctype html>
-        <html>
-            <head></head>
-            <body>
-                <form action="/" method="post">
-                    <label for="name">
-                        Enter your name:
-                        <input type="text" name="name">
-                    </label>
-
-                    <label>
-                        Enter your email:
-                        <input type="text" name="email">
-                    </label>
-
-                    <input type="submit" value="Subscribe!">
-                </form>
-            </body>
-        </html>
-        "#,
-    )
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-struct Input {
-    name: String,
-    email: String,
-}
-
-async fn accept_form(Form(input): Form<Input>) {
+async fn post_settings(Form(input): Form<config::Config>) {
     dbg!(&input);
 }
