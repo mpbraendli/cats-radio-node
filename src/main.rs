@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, str::FromStr};
 use serde::Deserialize;
 use askama::Template;
 use axum::{
@@ -7,6 +7,7 @@ use axum::{
     Router,
     response::Html,
     Form,
+    http::StatusCode,
 };
 use sqlx::{Connection, SqliteConnection};
 use tower_http::services::ServeDir;
@@ -18,7 +19,7 @@ struct AppState {
     db : Mutex<SqliteConnection>
 }
 
-type SharedState = Arc<AppState>;
+type SharedState = Arc<Mutex<AppState>>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -33,10 +34,10 @@ async fn main() -> std::io::Result<()> {
 
     let conf = config::Config::load().expect("Could not load config");
 
-    let shared_state = Arc::new(AppState {
+    let shared_state = Arc::new(Mutex::new(AppState {
         conf,
         db: Mutex::new(conn)
-    });
+    }));
 
     let app = Router::new()
         .route("/", get(dashboard))
@@ -85,13 +86,13 @@ enum ActivePage {
 struct DashboardTemplate<'a> {
     title: &'a str,
     page: ActivePage,
-    callsign: String,
+    conf: config::Config,
 }
 
 async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
     DashboardTemplate {
         title: "Dashboard",
-        callsign: state.conf.callsign.clone(),
+        conf: state.lock().unwrap().conf.clone(),
         page: ActivePage::Dashboard,
     }
 }
@@ -101,13 +102,13 @@ async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'stati
 struct IncomingTemplate<'a> {
     title: &'a str,
     page: ActivePage,
-    callsign: String,
+    conf: config::Config,
 }
 
 async fn incoming(State(state): State<SharedState>) -> IncomingTemplate<'static> {
     IncomingTemplate {
         title: "Incoming",
-        callsign: state.conf.callsign.clone(),
+        conf: state.lock().unwrap().conf.clone(),
         page: ActivePage::Incoming,
     }
 }
@@ -117,13 +118,13 @@ async fn incoming(State(state): State<SharedState>) -> IncomingTemplate<'static>
 struct SendTemplate<'a> {
     title: &'a str,
     page: ActivePage,
-    callsign: String,
+    conf: config::Config,
 }
 
 async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
     SendTemplate {
         title: "Send",
-        callsign: state.conf.callsign.clone(),
+        conf: state.lock().unwrap().conf.clone(),
         page: ActivePage::Send,
     }
 }
@@ -133,19 +134,122 @@ async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
 struct SettingsTemplate<'a> {
     title: &'a str,
     page: ActivePage,
-    callsign: String,
     conf: config::Config,
 }
 
 async fn show_settings(State(state): State<SharedState>) -> SettingsTemplate<'static> {
     SettingsTemplate {
         title: "Settings",
-        callsign: state.conf.callsign.clone(),
         page: ActivePage::Settings,
-        conf: state.conf.clone(),
+        conf: state.lock().unwrap().conf.clone(),
     }
 }
 
-async fn post_settings(Form(input): Form<config::Config>) {
-    dbg!(&input);
+#[derive(Deserialize, Debug)]
+struct FormConfig {
+    callsign: String,
+    ssid: String,
+    icon: String,
+
+    // felinet
+    // felinet_enabled is either "on" or absent.
+    // According to https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input/checkbox
+    // "If the value attribute was omitted, the default value for the checkbox is `on` [...]"
+    felinet_enabled: Option<String>,
+    address: String,
+
+    // beacon
+    period_seconds: config::DurationSeconds,
+    max_hops: u8,
+    latitude: String,
+    longitude: String,
+    altitude: String,
+    comment: String,
+    antenna_height: String,
+    antenna_gain: String,
+    tx_power: String,
+
+    // tunnel
+    tunnel_enabled: Option<String>,
+    local_ip: String,
+    netmask: String,
+}
+
+fn empty_string_to_none<T: FromStr + Sync>(value: &str) -> Result<Option<T>, T::Err> {
+    if value == "" {
+        Ok(None)
+    }
+    else {
+        Ok(Some(value.parse()?))
+    }
+}
+
+impl TryFrom<FormConfig> for config::Config {
+    type Error = anyhow::Error;
+
+    fn try_from(value: FormConfig) -> Result<Self, Self::Error> {
+        Ok(config::Config {
+            callsign: value.callsign,
+            ssid: value.ssid.parse()?,
+            icon: value.icon.parse()?,
+            felinet: config::FelinetConfig {
+                enabled: value.felinet_enabled.is_some(),
+                address: value.address,
+            },
+            beacon: config::BeaconConfig {
+                period_seconds: value.period_seconds,
+                max_hops: value.max_hops,
+                latitude: empty_string_to_none(&value.latitude)?,
+                longitude: empty_string_to_none(&value.longitude)?,
+                altitude: empty_string_to_none(&value.altitude)?,
+                comment: empty_string_to_none(&value.comment)?,
+                antenna_height: empty_string_to_none(&value.antenna_height)?,
+                antenna_gain: empty_string_to_none(&value.antenna_gain)?,
+                tx_power: empty_string_to_none(&value.tx_power)?,
+            },
+            tunnel: config::TunnelConfig {
+                enabled: value.tunnel_enabled.is_some(),
+                local_ip: value.local_ip,
+                netmask: value.netmask,
+            },
+        })
+    }
+}
+
+async fn post_settings(State(state): State<SharedState>, Form(input): Form<FormConfig>) -> (StatusCode, Html<String>) {
+    match config::Config::try_from(input) {
+        Ok(c) => {
+            match c.store() {
+                Ok(()) => {
+                    state.lock().unwrap().conf.clone_from(&c);
+
+                    (StatusCode::OK, Html(
+                            r#"<!doctype html>
+                            <html><head></head><body>
+                            <p>Configuration updated</p>
+                            <p>To <a href="/">dashboard</a></p>
+                            </body></html>"#.to_owned()))
+                }
+                Err(e) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, Html(
+                            format!(r#"<!doctype html>
+                            <html><head></head>
+                            <body><p>Internal Server Error: Could not write config</p>
+                            <p>{}</p>
+                            </body>
+                            </html>"#, e)))
+                },
+            }
+
+        },
+        Err(e) => {
+            (StatusCode::BAD_REQUEST, Html(
+                    format!(r#"<!doctype html>
+                            <html><head></head>
+                            <body><p>Error interpreting POST data</p>
+                            <p>{}</p>
+                            </body>
+                            </html>"#, e)))
+        },
+    }
 }

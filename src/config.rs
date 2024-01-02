@@ -34,11 +34,12 @@ impl Default for TunnelConfig {
     }
 }
 
-type DurationSeconds = std::num::NonZeroU32;
+pub(crate) type DurationSeconds = u32;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BeaconConfig {
-    pub period_seconds: Option<DurationSeconds>,
+    // A period of zero means beaconing is disabled
+    pub period_seconds: DurationSeconds,
     #[serde(default)]
     pub max_hops: u8,
     pub latitude: Option<f64>,
@@ -47,13 +48,13 @@ pub struct BeaconConfig {
     pub comment: Option<String>,
     pub antenna_height: Option<u8>,
     pub antenna_gain: Option<f32>,
-    pub tx_power: Option<f32>,
+    pub tx_power: Option<f32>, // dBm
 }
 
 impl Default for BeaconConfig {
     fn default() -> Self {
         BeaconConfig {
-            period_seconds: None,
+            period_seconds: 0,
             max_hops: 3,
             latitude: None,
             longitude: None,

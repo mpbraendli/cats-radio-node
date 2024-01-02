@@ -16,12 +16,30 @@ h2 {
     @apply font-bold;
 }
 
+fieldset {
+    @apply rounded-md m-2 p-2 font-normal text-sky-700;
+    @apply outline outline-blue-500/10 hover:outline-blue-500/30
+}
+
+legend {
+    @apply p-1;
+    font-variant: small-caps;
+}
+
+label {
+    @apply p-2 m-1;
+}
+
+input {
+    @apply m-1;
+}
+
 .btn {
     @apply font-bold py-1 px-2 my-1 rounded;
     @apply bg-sky-500 hover:bg-sky-600 text-white;
 }
 
 .textinput {
-    @apply rounded-md border border-2 border-zinc-200 px-1 py-1 text-sm font-normal text-zinc-700 outline outline-0 focus:border-2 focus:border-zinc-500 focus:outline-0 disabled:border-0 disabled:bg-zinc-50;
+    @apply rounded-md border border-2 border-zinc-200 px-1 py-1 text-sm font-normal text-sky-700 outline outline-0 focus:border-2 focus:border-zinc-500 focus:outline-0 disabled:border-0 disabled:bg-zinc-50;
 }
 

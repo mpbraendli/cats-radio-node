@@ -3,9 +3,57 @@
   <h1>Node Settings</h1>
 
   <form action="/settings" method="post">
-    <div><label for="callsign">Callsign: <input class="textinput" type="text" name="callsign" value="{{ conf.callsign }}"></label></div>
-    <div><label for="ssid">SSID: <input class="textinput" type="number" name="ssid" value="{{ conf.ssid }}"></label></div>
-    <div><label for="icon">Icon: <input class="textinput" type="number" name="icon" value="{{ conf.icon }}"></label></div>
+    <fieldset>
+      <legend>General</legend>
+      <div><label for="callsign">Callsign:</label><input class="textinput" type="text" name="callsign" value="{{ conf.callsign }}"></div>
+      <div><label for="ssid">SSID:</label><input class="textinput" type="number" name="ssid" value="{{ conf.ssid }}"></div>
+      <div><label for="icon">Icon:</label><input class="textinput" type="number" name="icon" value="{{ conf.icon }}"></div>
+    </fieldset>
+    <fieldset>
+      <legend>FELINET</legend>
+      <div><label for="felinet_enabled">Enabled:</label><input type="checkbox" name="felinet_enabled" {% if conf.felinet.enabled  %} checked {% endif %}></div>
+      <div><label for="address">Address:</label><input class="textinput" type="text" name="address" value="{{ conf.felinet.address }}"></div>
+    </fieldset>
+    <fieldset>
+      <legend>IGate Beacon</legend>
+      <div><label for="period_seconds">Period [s]:</label><input class="textinput" type="number" name="period_seconds" value="{{ conf.beacon.period_seconds }}"></div>
+      <div><label for="max_hops">Max hops:</label><input class="textinput" type="number" name="max_hops" value="{{ conf.beacon.max_hops }}"></div>
+      <div><label for="latitude">Latitude:</label>
+        <input class="textinput" type="text" name="latitude"
+               value="{% match conf.beacon.latitude %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="longitude">Longitude:</label>
+        <input class="textinput" type="text" name="longitude"
+               value="{% match conf.beacon.longitude %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="altitude">Altitude:</label>
+        <input class="textinput" type="text" name="altitude"
+               value="{% match conf.beacon.altitude %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="comment">Comment:</label>
+        <input class="textinput" type="text" name="comment"
+               value="{% match conf.beacon.comment %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="antenna_height">Ant height:</label>
+        <input class="textinput" type="text" name="antenna_height"
+               value="{% match conf.beacon.antenna_height %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="antenna_gain">Ant gain:</label>
+        <input class="textinput" type="text" name="antenna_gain"
+               value="{% match conf.beacon.antenna_gain %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+      <div><label for="tx_power">TX power [dBm]:</label>
+        <input class="textinput" type="text" name="tx_power"
+               value="{% match conf.beacon.tx_power %}{% when Some with (val) %}{{ val }}{% when None %}{% endmatch %}">
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>IP Tunnel</legend>
+      <div><label for="tunnel_enabled">Enabled:</label><input type="checkbox" name="tunnel_enabled" {% if conf.tunnel.enabled  %} checked {% endif %}></div>
+      <div><label for="local_ip">Local IP:</label><input class="textinput" type="text" name="local_ip" value="{{ conf.tunnel.local_ip }}"></div>
+      <div><label for="netmask">Netmask:</label><input class="textinput" type="text" name="netmask" value="{{ conf.tunnel.netmask }}"></div>
+    </fieldset>
+
     <div><input class="btn" type="submit" value="Update"></div>
   </form>
 </div>
