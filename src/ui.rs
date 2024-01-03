@@ -21,27 +21,7 @@ pub async fn serve(port: u16, shared_state: SharedState) {
         .route("/send", get(send))
         .route("/settings", get(show_settings).post(post_settings))
         .nest_service("/static", ServeDir::new("static"))
-        /* requires tracing and tower, e.g.
-         *  tower = { version = "0.4", features = ["util", "timeout"] }
-         *  tower-http = { version = "0.5.0", features = ["add-extension", "trace"] }
-         *  tracing = "0.1"
-         *  tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-         .layer(
-         ServiceBuilder::new()
-         .layer(HandleErrorLayer::new(|error: BoxError| async move {
-         ,if error.is::<tower::timeout::error::Elapsed>() {
-         Ok(StatusCode::REQUEST_TIMEOUT)
-         } else {
-         Err((
-         StatusCode::INTERNAL_SERVER_ERROR,
-         format!("Unhandled internal error: {error}"),
-         ))
-         }
-         }))
-         .timeout(Duration::from_secs(10))
-         .layer(TraceLayer::new_for_http())
-         .into_inner(),
-         )*/
+        /* For an example for timeouts and tracing, have a look at the git history */
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.unwrap();
@@ -122,6 +102,7 @@ async fn show_settings(State(state): State<SharedState>) -> SettingsTemplate<'st
 
 #[derive(Deserialize, Debug)]
 struct FormConfig {
+    freq: String,
     callsign: String,
     ssid: String,
     icon: String,
@@ -164,6 +145,7 @@ impl TryFrom<FormConfig> for config::Config {
 
     fn try_from(value: FormConfig) -> Result<Self, Self::Error> {
         Ok(config::Config {
+            freq: value.freq.parse()?,
             callsign: value.callsign,
             ssid: value.ssid.parse()?,
             icon: value.icon.parse()?,

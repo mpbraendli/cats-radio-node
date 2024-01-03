@@ -69,6 +69,7 @@ impl Default for BeaconConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
+    pub freq: u32, // kHz
     pub callsign: String,
     pub ssid: u8,
     #[serde(default)]
@@ -81,6 +82,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            freq: 430500,
             callsign: "CHANGEME".to_owned(),
             ssid: 0,
             icon: 0,

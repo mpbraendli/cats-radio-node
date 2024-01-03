@@ -5,6 +5,7 @@
   <form action="/settings" method="post">
     <fieldset>
       <legend>General</legend>
+      <div><label for="freq">Frequency [kHz]:</label><input class="textinput" type="text" name="freq" value="{{ conf.freq }}"></div>
       <div><label for="callsign">Callsign:</label><input class="textinput" type="text" name="callsign" value="{{ conf.callsign }}"></div>
       <div><label for="ssid">SSID:</label><input class="textinput" type="number" name="ssid" value="{{ conf.ssid }}"></div>
       <div><label for="icon">Icon:</label><input class="textinput" type="number" name="icon" value="{{ conf.icon }}"></div>
