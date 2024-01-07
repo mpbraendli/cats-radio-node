@@ -375,6 +375,7 @@ dependencies = [
  "askama_axum",
  "async-stream 0.2.1",
  "axum 0.7.3",
+ "half",
  "ham-cats",
  "log",
  "rand",

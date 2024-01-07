@@ -15,3 +15,14 @@ This project contains a web user interface for controlling a
 Configuration read/write through UI is done.
 
 Pending: RF4463 integration, message decoding and presentation, igate integration, UI to send messages
+
+## Additional tools
+
+### fake-radio
+
+If no radio is available, frames can be sent and received over UDP for debugging.
+cats-radio-node receives on 127.0.0.1:9073, and transmits to 127.0.0.1:9074.
+
+The `fake-radio` binary can be used to inject frames for that, and decodes those sent by cats-radio-node.
+
+Build with `cargo build --bin fake-radio`

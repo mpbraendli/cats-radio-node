@@ -20,14 +20,14 @@ pub const MAX_PACKET_LEN: usize = 8191;
 pub struct RadioManager {
     radio: Rf4463<Spi, OutputPin, OutputPin, Delay>,
 
-    tx: Sender<(Vec<u8>, f64)>,
-    rx: Receiver<Vec<u8>>,
+    receive_queue: Sender<(Vec<u8>, f64)>,
+    transmit_queue: Receiver<Vec<u8>>,
     rx_buf: [u8; MAX_PACKET_LEN],
     temperature: Arc<Mutex<f32>>,
 }
 
 impl RadioManager {
-    pub fn new(tx: Sender<(Vec<u8>, f64)>, rx: Receiver<Vec<u8>>) -> anyhow::Result<Self> {
+    pub fn new(receive_queue: Sender<(Vec<u8>, f64)>, transmit_queue: Receiver<Vec<u8>>) -> anyhow::Result<Self> {
         let spi = Spi::new(Bus::Spi0, SlaveSelect::Ss0, 1_000_000, Mode::Mode0)?;
         let gpio = Gpio::new()?;
         let sdn = gpio.get(22)?.into_output();
@@ -44,8 +44,8 @@ impl RadioManager {
 
         Ok(Self {
             radio,
-            tx,
-            rx,
+            receive_queue,
+            transmit_queue,
             rx_buf,
             temperature,
         })
@@ -65,13 +65,13 @@ impl RadioManager {
 
             *self.temperature.lock().await = self.radio.get_temp()?;
 
-            match self.rx.try_recv() {
+            match self.transmit_queue.try_recv() {
                 Ok(pkt) => {
                     self.tx(&pkt).await?;
                 }
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => {
-                    bail!("RX channel disconnected")
+                    bail!("TX channel disconnected")
                 }
             }
 
@@ -101,11 +101,11 @@ impl RadioManager {
                 .start_rx(None, false)
                 .map_err(|e| anyhow!("{e}"))?;
 
-            self.tx
+            self.receive_queue
                 .send((data.data().to_vec(), data.rssi()))
                 .await
                 .ok()
-                .context("TX channel died")?;
+                .context("RX channel died")?;
         }
 
         Ok(())

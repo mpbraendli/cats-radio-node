@@ -1,6 +1,16 @@
 {% include "head.html" %}
 <div class="">
-  Send!
+  <h1>Send a frame</h1>
+
+  <div>
+    <h2>Comment Whisker</h2>
+    <div>
+      <input type="checkbox" id="with_comment" value="Include Comment" checked>
+      <input class="textinput" type="text" id="whisker_comment" placeholder="Type comment here">
+    </div>
+
+    <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
+  </div>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}

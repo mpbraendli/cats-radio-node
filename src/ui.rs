@@ -1,15 +1,23 @@
+use anyhow::{anyhow, Context};
 use std::str::FromStr;
+use axum::Json;
+use log::info;
 use serde::Deserialize;
 use askama::Template;
 use axum::{
     extract::State,
-    routing::get,
+    routing::{get, post},
     Router,
     response::Html,
     Form,
     http::StatusCode,
 };
 use tower_http::services::ServeDir;
+
+use ham_cats::{
+    buffer::Buffer,
+    whisker::Identification,
+};
 
 use crate::config;
 use crate::SharedState;
@@ -19,6 +27,7 @@ pub async fn serve(port: u16, shared_state: SharedState) {
         .route("/", get(dashboard))
         .route("/incoming", get(incoming))
         .route("/send", get(send))
+        .route("/api/send_packet", post(post_packet))
         .route("/settings", get(show_settings).post(post_settings))
         .nest_service("/static", ServeDir::new("static"))
         /* For an example for timeouts and tracing, have a look at the git history */
@@ -81,6 +90,53 @@ async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
         title: "Send",
         conf: state.lock().unwrap().conf.clone(),
         page: ActivePage::Send,
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct ApiSendPacket {
+    comment : Option<String>,
+}
+
+fn build_packet(config: config::Config, comment: Option<String>) -> anyhow::Result<Vec<u8>> {
+    let mut buf = [0; crate::radio::MAX_PACKET_LEN];
+    let mut pkt = ham_cats::packet::Packet::new(&mut buf);
+    pkt.add_identification(
+        Identification::new(&config.callsign, config.ssid, config.icon)
+            .context("Invalid identification")?,
+    )
+    .map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;
+
+    if let Some(c) = comment {
+        pkt.add_comment(&c)
+            .map_err(|e| anyhow!("Could not add comment to packet: {e}"))?;
+    }
+
+    let mut buf2 = [0; crate::radio::MAX_PACKET_LEN];
+    let mut data = Buffer::new_empty(&mut buf2);
+    pkt.fully_encode(&mut data)
+        .map_err(|e| anyhow!("Could not encode packet: {e}"))?;
+
+    Ok(data.to_vec())
+}
+
+async fn post_packet(State(state): State<SharedState>, Json(payload): Json<ApiSendPacket>) -> StatusCode {
+    let (config, transmit_queue) = {
+        let s = state.lock().unwrap();
+        (s.conf.clone(), s.transmit_queue.clone())
+    };
+
+    info!("send_packet {:?}", payload);
+
+    match build_packet(config, payload.comment) {
+        Ok(p) => {
+            info!("Built packet of {} bytes", p.len());
+            match transmit_queue.send(p).await {
+                Ok(()) => StatusCode::OK,
+                Err(_) => StatusCode::BAD_REQUEST,
+            }
+        },
+        Err(_) =>StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
