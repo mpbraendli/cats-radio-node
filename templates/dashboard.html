@@ -1,6 +1,16 @@
 {% include "head.html" %}
 <div class="">
-  Dashboard!
+  <h1>Dashboard</h1>
+  <div>
+    <h2>Ten most recent packets</h2>
+    <ul>
+      {% for packet in packets %}
+      <li>{{ packet.received_at|e }} <b>{{ packet.from_callsign|e }}-{{ packet.from_ssid|e }}</b>
+        {% match packet.comment %}{% when Some with (val) %}{{ val|e }}{% when None %}N/A{% endmatch %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}

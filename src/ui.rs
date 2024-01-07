@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use std::str::FromStr;
 use axum::Json;
-use log::info;
+use log::{info, warn};
 use serde::Deserialize;
 use askama::Template;
 use axum::{
@@ -19,7 +19,7 @@ use ham_cats::{
     whisker::Identification,
 };
 
-use crate::config;
+use crate::{config, radio::MAX_PACKET_LEN};
 use crate::SharedState;
 
 pub async fn serve(port: u16, shared_state: SharedState) {
@@ -51,13 +51,64 @@ struct DashboardTemplate<'a> {
     title: &'a str,
     page: ActivePage,
     conf: config::Config,
+    packets: Vec<UIPacket>,
+}
+
+struct UIPacket {
+    pub received_at : i64,
+
+    pub from_callsign : String,
+    pub from_ssid : u8,
+
+    pub comment : Option<String>,
 }
 
 async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
+    let mut db = state.lock().unwrap().db.clone();
+
+    let packets = match db.get_most_recent_packets(10).await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("Dashboard will have empty packet list: {}", e);
+            Vec::new()
+        },
+    }.iter()
+    .filter_map(|db_packet| {
+        let mut buf = [0; MAX_PACKET_LEN];
+        match ham_cats::packet::Packet::fully_decode(&db_packet.content[2..], &mut buf) {
+            Ok(p) => {
+                if let Some(ident) = p.identification() {
+
+                    let mut commentbuf = [0; 1024];
+                    let comment = match p.comment(&mut commentbuf) {
+                        Ok(c) => Some(c.to_owned()),
+                        Err(_) => None,
+                    };
+
+                    Some(UIPacket {
+                        received_at : db_packet.received_at,
+                        from_callsign : ident.callsign.to_string(),
+                        from_ssid : ident.ssid,
+                        comment
+                    })
+                }
+                else {
+                    None
+                }
+            },
+            Err(e) => {
+                warn!("Failed to decode packet {}: {}", db_packet.id, e);
+                None
+            },
+        }
+    })
+    .collect();
+
     DashboardTemplate {
         title: "Dashboard",
         conf: state.lock().unwrap().conf.clone(),
         page: ActivePage::Dashboard,
+        packets
     }
 }
 

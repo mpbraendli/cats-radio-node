@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context};
-use tokio::net::UdpSocket;
 use ham_cats::{
     buffer::Buffer,
     whisker::{Arbitrary, Identification, Gps},
@@ -7,46 +6,7 @@ use ham_cats::{
 
 const MAX_PACKET_LEN : usize = 8191;
 
-#[tokio::main]
-async fn main() -> std::io::Result<()> {
-    eprintln!("Sending example packet");
-
-    let packet = build_example_packet().await.unwrap();
-    let sock = UdpSocket::bind("127.0.0.1:9074").await.unwrap();
-    sock.send_to(&packet, "127.0.0.1:9073").await.unwrap();
-
-    eprintln!("Receiving packets. Ctrl-C to stop");
-
-    let mut data = [0; MAX_PACKET_LEN];
-    while let Ok((len, _addr)) = sock.recv_from(&mut data).await {
-        let mut buf = [0; MAX_PACKET_LEN];
-        match ham_cats::packet::Packet::fully_decode(&data[2..len], &mut buf) {
-            Ok(packet) => {
-                if let Some(ident) = packet.identification() {
-                    eprintln!(" Ident {}-{}", ident.callsign, ident.ssid);
-                }
-
-                if let Some(gps) = packet.gps() {
-                    eprintln!(" GPS {} {}", gps.latitude(), gps.longitude());
-                }
-
-                let mut comment = [0; 1024];
-                if let Ok(c) = packet.comment(&mut comment) {
-                    eprintln!(" Comment {}", c);
-                }
-
-                eprintln!(" With {} Arbitrary whiskers", packet.arbitrary_iter().count());
-            },
-            Err(e) => {
-                eprintln!(" Cannot decode packet of length {} {:?}", len, e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-async fn build_example_packet() -> anyhow::Result<Vec<u8>> {
+fn build_example_packet(comment: &str) -> anyhow::Result<Vec<u8>> {
     let callsign = "EX4MPLE";
     let ssid = 0;
     let icon = 0;
@@ -59,7 +19,7 @@ async fn build_example_packet() -> anyhow::Result<Vec<u8>> {
     )
     .map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;
 
-    pkt.add_comment("Debugging packet")
+    pkt.add_comment(comment)
         .map_err(|e| anyhow!("Could not add comment to packet: {e}"))?;
 
     let latitude = 46.5;
@@ -89,3 +49,52 @@ async fn build_example_packet() -> anyhow::Result<Vec<u8>> {
 
     Ok(data.to_vec())
 }
+
+fn main() -> std::io::Result<()> {
+    std::thread::spawn(receive_loop);
+
+    eprintln!("Receiving messages. Write a comment and press ENTER to send. Ctrl-C to stop");
+    let mut stdin_lines = std::io::stdin().lines();
+    let sock = std::net::UdpSocket::bind("127.0.0.1:9075").unwrap();
+
+    while let Some(Ok(line)) = stdin_lines.next() {
+        eprintln!("Sending with comment = {}", line);
+
+        let packet = build_example_packet(&line).unwrap();
+        sock.send_to(&packet, "127.0.0.1:9073").unwrap();
+    }
+
+    Ok(())
+}
+
+fn receive_loop() {
+    let sock = std::net::UdpSocket::bind("127.0.0.1:9074").unwrap();
+    let mut data = [0; MAX_PACKET_LEN];
+    while let Ok((len, _addr)) = sock.recv_from(&mut data) {
+        eprintln!("Packet of length {}", len);
+
+        let mut buf = [0; MAX_PACKET_LEN];
+        match ham_cats::packet::Packet::fully_decode(&data[2..len], &mut buf) {
+            Ok(packet) => {
+                if let Some(ident) = packet.identification() {
+                    eprintln!(" Ident {}-{}", ident.callsign, ident.ssid);
+                }
+
+                if let Some(gps) = packet.gps() {
+                    eprintln!(" GPS {} {}", gps.latitude(), gps.longitude());
+                }
+
+                let mut comment = [0; 1024];
+                if let Ok(c) = packet.comment(&mut comment) {
+                    eprintln!(" Comment {}", c);
+                }
+
+                eprintln!(" With {} Arbitrary whiskers", packet.arbitrary_iter().count());
+            },
+            Err(e) => {
+                eprintln!(" Cannot decode {:?}", e);
+            }
+        }
+    }
+}
+
