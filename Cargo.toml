@@ -18,6 +18,10 @@ sqlx = { version = "0.7", features = [ "runtime-tokio-rustls", "sqlite"]}
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.5.0", features = ["fs"] }
 
+futures-core = "0.3"
+futures= "0.3"
+tun = { version = "0.6", features = ["async"] }
+
 ham-cats = { git = "https://gitlab.scd31.com/cats/ham-cats", rev = "d22f541c9a7e1c3a6c6e9449d87212b060f5edfb" }
 half = { version = "2" }
 rf4463 = { git = "https://gitlab.scd31.com/stephen/rf4463-lib", rev = "79c8def87540f8ab2663bfa3c9fb13db344ef84e" }

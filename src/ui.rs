@@ -290,7 +290,7 @@ async fn post_settings(State(state): State<SharedState>, Form(input): Form<FormC
                     (StatusCode::OK, Html(
                             r#"<!doctype html>
                             <html><head></head><body>
-                            <p>Configuration updated</p>
+                            <p>Configuration updated. If you enabled or disabled tunnel, please restart the cats-radio-node process.</p>
                             <p>To <a href="/">dashboard</a></p>
                             </body></html>"#.to_owned()))
                 }

@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context};
 use log::{debug, info, warn, error};
 use std::sync::{Arc, Mutex};
 use tokio::net::UdpSocket;
@@ -17,11 +18,40 @@ struct AppState {
 
 type SharedState = Arc<Mutex<AppState>>;
 
+const TUN_MTU : usize = 255;
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     simple_logger::SimpleLogger::new().env().init().unwrap();
 
     let conf = config::Config::load().expect("Could not load config");
+
+    let (mut tun_sink, tun_source) = if conf.tunnel.enabled {
+        let tunnelconf = conf.tunnel.clone();
+        let mut tunconfig = tun::Configuration::default();
+
+        tunconfig
+            .address(tunnelconf.local_ip)
+            .netmask(tunnelconf.netmask)
+            // TODO MTU could be increased to something a bit smaller than MAX_PACKET_LEN, but Arbitrary only have 255 byte
+            // payloads. Maybe propose a Tunnel whisker if it makes sense.
+            .mtu(TUN_MTU.try_into().unwrap())
+            // TODO is .destination() needed?
+            .up();
+
+        #[cfg(target_os = "linux")]
+        tunconfig.platform(|tunconfig| {
+            tunconfig.packet_information(true);
+        });
+
+        let dev = tun::create_as_async(&tunconfig).unwrap();
+        use futures::stream::StreamExt;
+        let (tun_sink, tun_source) = dev.into_framed().split();
+        (Some(tun_sink), Some(tun_source))
+    }
+    else {
+        (None, None)
+    };
 
     let (radio_rx_queue, mut packet_receive) = mpsc::channel(16);
     let (packet_send, mut radio_tx_queue) = mpsc::channel::<Vec<u8>>(16);
@@ -91,6 +121,15 @@ async fn main() -> std::io::Result<()> {
                     if let Err(e) = db.store_packet(&packet_data).await {
                         warn!("Failed to write to sqlite: {}", e);
                     }
+
+                    if let Some(sink) = &mut tun_sink {
+                        for arb in packet.arbitrary_iter() {
+                            use futures::SinkExt;
+                            if let Err(e) = sink.send(tun::TunPacket::new(arb.0.to_vec())).await {
+                                warn!("Failed to send to TUN: {}", e);
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     warn!("Failed to decode packet: {}", e);
@@ -101,6 +140,52 @@ async fn main() -> std::io::Result<()> {
 
         warn!("Packet receive task stopping");
     });
+
+    let shared_state_tunnel = shared_state.clone();
+    if let Some(mut source) = tun_source {
+        tokio::task::spawn(async move {
+            use futures::stream::StreamExt;
+            while let Some(packet_from_tun) = source.next().await {
+                match packet_from_tun {
+                    Ok(ip_packet) if ip_packet.get_bytes().len() <= TUN_MTU => {
+                        println!("RX: {} bytes", ip_packet.get_bytes().len());
+
+                        let config = shared_state_tunnel.lock().unwrap().conf.clone();
+
+                        fn build_tun_packet(config: config::Config, ip_packet: &[u8]) -> anyhow::Result<Vec<u8>> {
+                            let mut buf = [0; MAX_PACKET_LEN];
+                            let mut pkt = ham_cats::packet::Packet::new(&mut buf);
+                            pkt.add_identification(
+                                ham_cats::whisker::Identification::new(&config.callsign, config.ssid, config.icon)
+                                .context("Invalid identification")?
+                                ).map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;
+
+                            pkt.add_arbitrary(ham_cats::whisker::Arbitrary::new(ip_packet).unwrap())
+                                .map_err(|e| anyhow!("Could not add data to packet: {e}"))?;
+
+                            let mut buf2 = [0; MAX_PACKET_LEN];
+                            let mut data = ham_cats::buffer::Buffer::new_empty(&mut buf2);
+                            pkt.fully_encode(&mut data)
+                                .map_err(|e| anyhow!("Could not encode packet: {e}"))?;
+                            Ok(data.to_vec())
+                        }
+
+                        match build_tun_packet(config, ip_packet.get_bytes()) {
+                            Ok(data) => if let Err(e) = packet_send.send(data).await {
+                                warn!("Failed to send TUN packet: {e}");
+                            },
+                            Err(e) => warn!("Failed to prepare TUN packet: {e}"),
+                        }
+
+                    },
+                    Ok(ip_packet) => {
+                        println!("RX: too large packet: {} bytes", ip_packet.get_bytes().len());
+                    },
+                    Err(err) => panic!("Error: {:?}", err),
+                }
+            }
+        });
+    }
 
     let port = 3000;
     info!("Setting up listener on port {port}");
