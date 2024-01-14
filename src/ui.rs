@@ -75,7 +75,7 @@ async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'stati
     }.iter()
     .filter_map(|db_packet| {
         let mut buf = [0; MAX_PACKET_LEN];
-        match ham_cats::packet::Packet::fully_decode(&db_packet.content[2..], &mut buf) {
+        match ham_cats::packet::Packet::fully_decode(&db_packet.content, &mut buf) {
             Ok(p) => {
                 if let Some(ident) = p.identification() {
 
