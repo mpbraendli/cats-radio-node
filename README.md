@@ -13,8 +13,15 @@ This project contains a web user interface for controlling a
 ## Current state of the project
 
 Configuration read/write through UI is done.
+RF4463 integration, message decoding and presentation, UI to send messages.
+Tunnel IP packets through Arbitrary whiskers, using TUN.
 
-Pending: RF4463 integration, message decoding and presentation, igate integration, UI to send messages
+### TODO:
+
+* Nicer UI for presenting incoming packets. For now it just shows the Comment whisker.
+* Live update of incoming packets using WebSocket.
+* A 'chat' page that works better to actually chat with another node.
+* igate integration
 
 ## Additional tools
 
@@ -26,3 +33,12 @@ cats-radio-node receives on 127.0.0.1:9073, and transmits to 127.0.0.1:9074.
 The `fake-radio` binary can be used to inject frames for that, and decodes those sent by cats-radio-node.
 
 Build with `cargo build --bin fake-radio`
+
+## Remarks
+
+Careful when installing Rust on a Raspberry Pi with a 64-bit kernel running a 32-bit userland: `rustup` will want
+to install the aarch64 toolchain, but that one doesn't work!
+
+If that happens, be sure to select the `stable-arm-unknown-linux-gnueabihf` toolchain, and set it as default using
+`rustup default`.
+
