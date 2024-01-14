@@ -1,4 +1,3 @@
-use anyhow::Context;
 use log::{debug, info, warn, error};
 use std::sync::{Arc, Mutex};
 use tokio::net::UdpSocket;
@@ -78,33 +77,28 @@ async fn main() -> std::io::Result<()> {
 
     let shared_state_receive = shared_state.clone();
     tokio::task::spawn(async move {
-        loop {
-            match packet_receive
-                .recv()
-                .await
-                .context("Packet receive channel died") {
-                    Ok((packet_data, rssi)) => {
-                        debug!("RX RSSI {} len {}", rssi, packet_data.len());
-                        let mut buf = [0; MAX_PACKET_LEN];
-                        match ham_cats::packet::Packet::fully_decode(&packet_data[2..], &mut buf) {
-                            Ok(packet) => {
-                                if let Some(ident) = packet.identification() {
-                                    debug!(" From {}-{}", ident.callsign, ident.ssid);
-                                }
+        while let Some((packet_data, rssi)) = packet_receive.recv().await {
+            debug!("RX RSSI {} len {}", rssi, packet_data.len());
+            let mut buf = [0; MAX_PACKET_LEN];
+            match ham_cats::packet::Packet::fully_decode(&packet_data[2..], &mut buf) {
+                Ok(packet) => {
+                    if let Some(ident) = packet.identification() {
+                        debug!(" From {}-{}", ident.callsign, ident.ssid);
+                    }
 
-                                let mut db = shared_state_receive.lock().unwrap().db.clone();
-                                if let Err(e) = db.store_packet(&packet_data).await {
-                                    warn!("Failed to write to sqlite: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to decode packet: {}", e);
-                            }
-                        }
-                    },
-                    Err(e) => warn!("Failed to decode packet: {}", e),
+                    let mut db = shared_state_receive.lock().unwrap().db.clone();
+                    if let Err(e) = db.store_packet(&packet_data).await {
+                        warn!("Failed to write to sqlite: {}", e);
+                    }
                 }
+                Err(e) => {
+                    warn!("Failed to decode packet: {}", e);
+                    eprintln!("{:02X?}", packet_data);
+                }
+            }
         }
+
+        warn!("Packet receive task stopping");
     });
 
     let port = 3000;

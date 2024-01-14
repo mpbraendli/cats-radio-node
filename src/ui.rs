@@ -239,7 +239,7 @@ struct FormConfig {
 }
 
 fn empty_string_to_none<T: FromStr + Sync>(value: &str) -> Result<Option<T>, T::Err> {
-    if value == "" {
+    if value.is_empty() {
         Ok(None)
     }
     else {

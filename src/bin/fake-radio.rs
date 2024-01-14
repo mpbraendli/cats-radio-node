@@ -14,7 +14,7 @@ fn build_example_packet(comment: &str) -> anyhow::Result<Vec<u8>> {
     let mut buf = [0; MAX_PACKET_LEN];
     let mut pkt = ham_cats::packet::Packet::new(&mut buf);
     pkt.add_identification(
-        Identification::new(&callsign, ssid, icon)
+        Identification::new(callsign, ssid, icon)
             .context("Invalid identification")?,
     )
     .map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;

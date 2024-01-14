@@ -55,6 +55,7 @@ impl RadioManager {
         self.radio.set_channel(channel);
     }
 
+    #[allow(dead_code)]
     pub fn temperature_mutex(&self) -> Arc<Mutex<f32>> {
         self.temperature.clone()
     }
