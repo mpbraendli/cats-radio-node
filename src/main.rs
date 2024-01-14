@@ -42,7 +42,8 @@ async fn main() -> std::io::Result<()> {
             let mut buf = [0; 1024];
             while let Ok((len, addr)) = sock_r.recv_from(&mut buf).await {
                 println!("{:?} bytes received from {:?}", len, addr);
-                let packet = buf[..len].to_vec();
+                // Cut the length prefix, which isn't returned by the real radio
+                let packet = buf[2..len].to_vec();
                 let rssi = 0f64;
                 radio_rx_queue.send((packet, rssi)).await.expect("Inject frame");
             }
@@ -80,7 +81,7 @@ async fn main() -> std::io::Result<()> {
         while let Some((packet_data, rssi)) = packet_receive.recv().await {
             debug!("RX RSSI {} len {}", rssi, packet_data.len());
             let mut buf = [0; MAX_PACKET_LEN];
-            match ham_cats::packet::Packet::fully_decode(&packet_data[2..], &mut buf) {
+            match ham_cats::packet::Packet::fully_decode(&packet_data, &mut buf) {
                 Ok(packet) => {
                     if let Some(ident) = packet.identification() {
                         debug!(" From {}-{}", ident.callsign, ident.ssid);
