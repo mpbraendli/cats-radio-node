@@ -12,12 +12,24 @@ async function btn_remove_destination(element_clicked) {
 async function btn_send_packet() {
     let data = {
         'comment': null,
+        //'simplex': null,
         'destinations': [],
     };
 
     if (document.getElementById('with_comment').checked) {
         data.comment = document.getElementById('whisker_comment').value;
     }
+
+    /* not yet implemented in ham-cats
+    if (document.getElementById('with_simplex').checked) {
+        const simplex_freq_MHz = parseInt(document.getElementById('simplex_mode').value, 10);
+        const mode_select = document.getElementById('simplex_mode')
+        const i = mode_select.selectedIndex;
+        const simplex_mode = mode_select.options[i].text;
+
+        data.simplex = {'frequency': simplex_freq_MHz * 1e6, 'mode': simplex_mode};
+    }
+    */
 
     const destinations = document.getElementById('destinations');
     const destList = destinations.querySelectorAll("p.destination");

@@ -33,7 +33,33 @@
     </div>
   </div>
 
-  <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
+  <!-- not yet implemented in ham-cats
+  <div class="section">
+    <h2>Simplex Whisker</h2>
+    <p>The simplex whisker lets you communicate if you are reachable over a simplex voice frequency</p>
+    <div>
+      <input type="checkbox" id="with_simplex" value="Include Simplex Whisker" checked>
+      <input class="textinput" type="text" id="simplex_frequency" value="145.500">
+      <select class="select" id="simplex_mode">
+        <option value="FM" selected>FM</option>
+        <option value="CATS">CATS</option>
+        <option value="USB">USB</option>
+        <option value="LSB">LSB</option>
+        <option value="CW">LSB</option>
+        <option value="AM">AM</option>
+        <option value="FreeDV">FreeDV</option>
+        <option value="M17">M17</option>
+        <option value="D-STAR">D-STAR</option>
+        <option value="DMR">DMR</option>
+        <option value="Fusion">Fusion</option>
+        <option value="P25">P25</option>
+      </select>
+    </div>
+  </div>-->
+
+  <div class="section">
+    <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
+  </div>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}
