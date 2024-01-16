@@ -2,6 +2,11 @@
 <div class="">
   <h1>Dashboard</h1>
   <div>
+    <h2>Statistics</h2>
+    <p>This node is up since {{ node_startup_time }}</p>
+    <p>Database contains {{ num_received_frames }} received frames</p>
+  </div>
+  <div>
     <h2>Ten most recent packets</h2>
     <ul>
       {% for packet in packets %}

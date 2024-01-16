@@ -14,6 +14,7 @@ struct AppState {
     conf : config::Config,
     db : db::Database,
     transmit_queue : mpsc::Sender<Vec<u8>>,
+    start_time : chrono::DateTime<chrono::Utc>,
 }
 
 type SharedState = Arc<Mutex<AppState>>;
@@ -59,7 +60,8 @@ async fn main() -> std::io::Result<()> {
     let shared_state = Arc::new(Mutex::new(AppState {
         conf : conf.clone(),
         db : db::Database::new().await,
-        transmit_queue: packet_send.clone(),
+        transmit_queue : packet_send.clone(),
+        start_time : chrono::Utc::now(),
     }));
 
     if conf.freq == 0 {

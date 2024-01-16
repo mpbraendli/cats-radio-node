@@ -5,7 +5,8 @@ use sqlx::SqlitePool;
 
 #[derive(Clone)]
 pub struct Database {
-    pool : SqlitePool
+    pool : SqlitePool,
+    num_frames_received : u64,
 }
 
 #[derive(sqlx::FromRow, Debug)]
@@ -25,7 +26,16 @@ impl Database {
             .await
             .expect("could not run SQLx migrations");
 
-        Self { pool }
+        let num_frames_received : i64 = sqlx::query_scalar(r#"SELECT COUNT(id) FROM frames_received"#)
+            .fetch_one(&pool)
+            .await
+            .expect("could not count frames");
+
+        Self { pool, num_frames_received: num_frames_received.try_into().unwrap() }
+    }
+
+    pub fn get_num_received_frames(&self) -> u64 {
+        self.num_frames_received
     }
 
     pub async fn store_packet(&mut self, packet: &[u8]) -> anyhow::Result<()> {
@@ -40,6 +50,8 @@ impl Database {
             .execute(&self.pool)
             .await?
             .last_insert_rowid();
+
+        self.num_frames_received += 1;
 
         debug!("INSERTed row {id}");
         Ok(())

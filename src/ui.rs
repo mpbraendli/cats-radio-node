@@ -16,7 +16,7 @@ use tower_http::services::ServeDir;
 
 use ham_cats::{
     buffer::Buffer,
-    whisker::Identification,
+    whisker::{Identification, Destination},
 };
 
 use crate::{config, radio::MAX_PACKET_LEN};
@@ -51,6 +51,8 @@ struct DashboardTemplate<'a> {
     title: &'a str,
     page: ActivePage,
     conf: config::Config,
+    node_startup_time: String,
+    num_received_frames: u64,
     packets: Vec<UIPacket>,
 }
 
@@ -64,7 +66,10 @@ struct UIPacket {
 }
 
 async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
-    let mut db = state.lock().unwrap().db.clone();
+    let (conf, mut db, node_startup_time) = {
+        let st = state.lock().unwrap();
+        (st.conf.clone(), st.db.clone(), st.start_time.clone())
+    };
 
     let packets = match db.get_most_recent_packets(10).await {
         Ok(v) => v,
@@ -106,9 +111,11 @@ async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'stati
 
     DashboardTemplate {
         title: "Dashboard",
-        conf: state.lock().unwrap().conf.clone(),
+        conf,
         page: ActivePage::Dashboard,
-        packets
+        num_received_frames : db.get_num_received_frames(),
+        node_startup_time : node_startup_time.format("%Y-%m-%d %H:%M:%S").to_string(),
+        packets,
     }
 }
 
@@ -145,11 +152,18 @@ async fn send(State(state): State<SharedState>) -> SendTemplate<'static> {
 }
 
 #[derive(Deserialize, Debug)]
+struct ApiSendPacketDestination {
+    callsign : String,
+    ssid : u8,
+}
+
+#[derive(Deserialize, Debug)]
 struct ApiSendPacket {
+    destinations : Vec<ApiSendPacketDestination>,
     comment : Option<String>,
 }
 
-fn build_packet(config: config::Config, comment: Option<String>) -> anyhow::Result<Vec<u8>> {
+fn build_packet(config: config::Config, payload: ApiSendPacket) -> anyhow::Result<Vec<u8>> {
     let mut buf = [0; crate::radio::MAX_PACKET_LEN];
     let mut pkt = ham_cats::packet::Packet::new(&mut buf);
     pkt.add_identification(
@@ -158,9 +172,17 @@ fn build_packet(config: config::Config, comment: Option<String>) -> anyhow::Resu
     )
     .map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;
 
-    if let Some(c) = comment {
+    if let Some(c) = payload.comment {
         pkt.add_comment(&c)
             .map_err(|e| anyhow!("Could not add comment to packet: {e}"))?;
+    }
+
+    for dest in payload.destinations {
+        let dest = Destination::new(false, 0, &dest.callsign, dest.ssid)
+            .ok_or(anyhow!("Cound not create destination"))?;
+
+        pkt.add_destination(dest)
+            .map_err(|e| anyhow!("Could not add destination to packet: {e}"))?;
     }
 
     let mut buf2 = [0; crate::radio::MAX_PACKET_LEN];
@@ -179,7 +201,7 @@ async fn post_packet(State(state): State<SharedState>, Json(payload): Json<ApiSe
 
     info!("send_packet {:?}", payload);
 
-    match build_packet(config, payload.comment) {
+    match build_packet(config, payload) {
         Ok(p) => {
             info!("Built packet of {} bytes", p.len());
             match transmit_queue.send(p).await {
