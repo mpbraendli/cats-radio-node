@@ -109,12 +109,15 @@ async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'stati
     })
     .collect();
 
+    let node_startup_time = format!("{} UTC",
+        node_startup_time.format("%Y-%m-%d %H:%M:%S"));
+
     DashboardTemplate {
         title: "Dashboard",
         conf,
         page: ActivePage::Dashboard,
         num_received_frames : db.get_num_received_frames(),
-        node_startup_time : node_startup_time.format("%Y-%m-%d %H:%M:%S").to_string(),
+        node_startup_time,
         packets,
     }
 }

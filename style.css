@@ -34,6 +34,15 @@ input {
     @apply m-1;
 }
 
+div.content {
+    @apply py-1 px-2 my-1;
+}
+
+div.section {
+    @apply py-1 my-1;
+    @apply border-t-2 border-sky-300;
+}
+
 .btn {
     @apply font-bold py-1 px-2 my-1 rounded;
     @apply bg-sky-500 hover:bg-sky-600 text-white;

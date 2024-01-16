@@ -1,14 +1,15 @@
 {% include "head.html" %}
-<div class="">
+<div class="content">
   <h1>Send a frame</h1>
-  <p>
-  One main feature of CATS is that packets are constructed from Whiskers.
+  <p>One main feature of CATS is that packets are constructed from Whiskers.
   Each Whisker represents one possible attribute of data.</p>
   <p>On this page you can select which whiskers to include in your packet.</p>
 
-  <div>
+  <div class="section">
     <h2>Identification</h2>
     <p>{{ conf.callsign }}-{{ conf.ssid }}</p>
+  </div>
+  <div class="section">
     <h2>Destination Whisker</h2>
     <p>CATS packets can optionally have one or more destinations.
     This can be useful for e.g. sending a message to another amateur radio operator,
@@ -16,21 +17,23 @@
     The destination consists of a UTF-8 callsign and an SSID byte.</p>
     <template id="destination_template">
       <p class="destination">
-        <input class="textinput dest_callsign" type="text" placeholder="Type callsign here">
-        <input class="textinput dest_ssid" type="text" placeholder="Type SSID here">
-        <button class="btn" type="button" onclick="btn_remove_destination(this)">Remove</button>
+      <input class="textinput dest_callsign" type="text" placeholder="Type callsign here">
+      <input class="textinput dest_ssid" type="text" placeholder="Type SSID here">
+      <button class="btn" type="button" onclick="btn_remove_destination(this)">Remove</button>
       </p>
     </template>
     <div id="destinations"></div>
     <button class="btn" type="button" onclick="btn_add_destination()">Add destination</button>
+  </div>
+  <div class="section">
     <h2>Comment Whisker</h2>
     <div>
       <input type="checkbox" id="with_comment" value="Include Comment" checked>
       <input class="textinput" type="text" id="whisker_comment" placeholder="Type comment here">
     </div>
-
-    <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
   </div>
+
+  <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}
