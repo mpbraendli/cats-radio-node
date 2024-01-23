@@ -1,4 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::io;
 
 use log::debug;
 use sqlx::SqlitePool;
@@ -18,6 +19,19 @@ pub struct Packet {
 
 impl Database {
     pub async fn new() -> Self {
+        {
+            // Ensure the database file exists
+            match std::fs::OpenOptions::new().write(true)
+                .create_new(true)
+                .open("cats-radio-node.db") {
+                    Ok(_f) => (),
+                    Err(e) if e.kind() == io::ErrorKind::AlreadyExists => (),
+                    Err(e) => {
+                        panic!("Failed to ensure DB exists: {e}");
+                    },
+                }
+        }
+
         let pool = SqlitePool::connect("sqlite:cats-radio-node.db").await.unwrap();
         let mut conn = pool.acquire().await.unwrap();
 
