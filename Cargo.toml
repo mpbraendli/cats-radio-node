@@ -9,14 +9,17 @@ license = "MIT"
 anyhow = "1.0"
 askama = { version = "0.12", features = ["with-axum"] }
 askama_axum = "0.4"
-axum = "0.7"
+axum = { version = "0.7", features = ["ws"] }
+#axum-extra = "0.7"
 chrono = "0.4"
 simple_logger = "4.3"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 toml = "0.8"
 sqlx = { version = "0.7", features = [ "runtime-tokio-rustls", "sqlite"]}
 tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.21"
 tower-http = { version = "0.5.0", features = ["fs"] }
 
 futures-core = "0.3"
@@ -31,8 +34,6 @@ tonic = { version = "0.10", features = ["tls", "tls-roots"] }
 async-stream = "0.3"
 rand = "0.8"
 
-# Websockets example in https://github.com/tokio-rs/axum/tree/main/examples/websockets
-# tokio-tungstenite = "0.21"
 
 [[bin]]
 name = "fake-radio"

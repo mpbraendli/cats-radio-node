@@ -1,0 +1,13 @@
+{% include "head.html" %}
+<div class="content">
+  {% if ok %}
+  <h1>Configuration updated</h1>
+  <p>If you enabled or disabled tunnel, please restart the cats-radio-node process.</p>
+  {% else %}
+  <h1>Configuration update failed</h1>
+  <p>{{ error_message }}:</p>
+  <p>{{ error_reason }}:</p>
+  {% endif %}
+</div>
+{% include "foot.html" %}
+{# vi:set et sw=2 ts=2: #}

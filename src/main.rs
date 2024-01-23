@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use log::{debug, info, warn, error};
 use std::sync::{Arc, Mutex};
 use tokio::net::UdpSocket;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 use radio::{RadioManager, MAX_PACKET_LEN};
 
 mod db;
@@ -10,10 +10,17 @@ mod radio;
 mod config;
 mod ui;
 
+#[derive(Clone, serde::Serialize)]
+struct WSChatMessage {
+    from: String,
+    message: String,
+}
+
 struct AppState {
     conf : config::Config,
     db : db::Database,
     transmit_queue : mpsc::Sender<Vec<u8>>,
+    ws_broadcast : broadcast::Sender<WSChatMessage>,
     start_time : chrono::DateTime<chrono::Utc>,
 }
 
@@ -61,6 +68,7 @@ async fn main() -> std::io::Result<()> {
         conf : conf.clone(),
         db : db::Database::new().await,
         transmit_queue : packet_send.clone(),
+        ws_broadcast : broadcast::Sender::new(2),
         start_time : chrono::Utc::now(),
     }));
 
@@ -115,11 +123,27 @@ async fn main() -> std::io::Result<()> {
             let mut buf = [0; MAX_PACKET_LEN];
             match ham_cats::packet::Packet::fully_decode(&packet_data, &mut buf) {
                 Ok(packet) => {
+                    let (mut db, ws_broadcast) = {
+                        let g = shared_state_receive.lock().unwrap();
+                        (g.db.clone(), g.ws_broadcast.clone())
+                    };
+
                     if let Some(ident) = packet.identification() {
                         debug!(" From {}-{}", ident.callsign, ident.ssid);
+
+                        let mut commentbuf = [0u8, 255];
+                        if let Ok(comment) = packet.comment(&mut commentbuf) {
+                            let m = WSChatMessage {
+                                from: format!("{}-{}", ident.callsign, ident.ssid),
+                                message: comment.to_owned()
+                            };
+                            match ws_broadcast.send(m) {
+                                Ok(num) => debug!("Send WS message to {num}"),
+                                Err(_) => debug!("No WS receivers currently"),
+                            }
+                        }
                     }
 
-                    let mut db = shared_state_receive.lock().unwrap().db.clone();
                     if let Err(e) = db.store_packet(&packet_data).await {
                         warn!("Failed to write to sqlite: {}", e);
                     }
