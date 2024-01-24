@@ -15,12 +15,11 @@ This project contains a web user interface for controlling a
 Configuration read/write through UI is done.
 RF4463 integration, message decoding and presentation, UI to send messages.
 Tunnel IP packets through Arbitrary whiskers, using TUN.
+Live update of incoming packets using WebSocket, in the 'Chat' window.
 
 ### TODO:
 
 * Nicer UI for presenting incoming packets. For now it just shows the Comment whisker.
-* Live update of incoming packets using WebSocket.
-* A 'chat' page that works better to actually chat with another node.
 * igate integration
 
 ## Additional tools

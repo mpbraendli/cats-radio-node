@@ -41,7 +41,9 @@ pub async fn serve(port: u16, shared_state: SharedState) {
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.unwrap();
-    axum::serve(listener, app).await.unwrap()
+    axum::serve(listener,
+        app.into_make_service_with_connect_info::<SocketAddr>())
+        .await.unwrap()
 }
 
 #[derive(PartialEq)]
@@ -58,8 +60,8 @@ impl ActivePage {
     fn styles(&self) -> Vec<&'static str> {
         match self {
             ActivePage::Dashboard => vec![],
-            ActivePage::Chat => vec!["chat.js"],
-            ActivePage::Send => vec!["send.js"],
+            ActivePage::Chat => vec!["chat.js", "main.js", "strftime.js"],
+            ActivePage::Send => vec!["send.js", "main.js", "strftime.js"],
             ActivePage::Settings => vec![],
             ActivePage::None => vec![],
         }
@@ -208,7 +210,7 @@ async fn handle_socket(
     mut socket: WebSocket,
     mut rx: tokio::sync::broadcast::Receiver<UIPacket>,
     who: SocketAddr) {
-    if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
+    if socket.send(Message::Ping(vec![1])).await.is_ok() {
         info!("Pinged {who}...");
     } else {
         info!("Could not ping {who}!");
@@ -218,13 +220,17 @@ async fn handle_socket(
 
     let mut send_task = tokio::spawn(async move {
         while let Ok(m) = rx.recv().await {
-            if let Ok(m_json) = serde_json::to_string(&m) {
-                if sender
+            debug!("Sending {:?} to {who}", m.comment);
+            match serde_json::to_string(&m) {
+                Ok(m_json) => if sender
                     .send(Message::Text(m_json))
-                        .await
-                        .is_err()
+                    .await
+                    .is_err()
                 {
                     return;
+                },
+                Err(e) => {
+                    warn!("Could not convert message to json: {e}");
                 }
             }
         }
@@ -343,22 +349,41 @@ fn build_packet(config: config::Config, payload: ApiSendPacket) -> anyhow::Resul
 }
 
 async fn post_packet(State(state): State<SharedState>, Json(payload): Json<ApiSendPacket>) -> StatusCode {
-    let (config, transmit_queue) = {
+    let (config, transmit_queue, mut db, ws_broadcast) = {
         let s = state.lock().unwrap();
-        (s.conf.clone(), s.transmit_queue.clone())
+        (s.conf.clone(), s.transmit_queue.clone(), s.db.clone(), s.ws_broadcast.clone())
     };
 
     info!("send_packet {:?}", payload);
 
+    let m = UIPacket {
+        received_at: chrono::Utc::now(),
+        from_callsign: config.callsign.to_string(),
+        from_ssid: config.ssid,
+        comment: payload.comment.clone(),
+    };
+
     match build_packet(config, payload) {
         Ok(p) => {
             info!("Built packet of {} bytes", p.len());
-            match transmit_queue.send(p).await {
-                Ok(()) => StatusCode::OK,
+
+            match ws_broadcast.send(m) {
+                Ok(num) => debug!("Send own WS message to {num}"),
+                Err(_) => debug!("No WS receivers currently"),
+            }
+
+            match transmit_queue.send(p.clone()).await {
+                Ok(()) => {
+                    if let Err(e) = db.store_packet(&p[2..]).await {
+                        warn!("Failed to write outgoing packet to sqlite: {}", e);
+                    }
+
+                    StatusCode::OK
+                },
                 Err(_) => StatusCode::BAD_REQUEST,
             }
         },
-        Err(_) =>StatusCode::INTERNAL_SERVER_ERROR,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 

@@ -80,6 +80,10 @@ fn receive_loop() {
                     eprintln!(" Ident {}-{}", ident.callsign, ident.ssid);
                 }
 
+                for dest in packet.destination_iter() {
+                    eprintln!(" TO {}-{}", dest.callsign(), dest.ssid());
+                }
+
                 if let Some(gps) = packet.gps() {
                     eprintln!(" GPS {} {}", gps.latitude(), gps.longitude());
                 }

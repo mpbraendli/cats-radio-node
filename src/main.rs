@@ -24,7 +24,10 @@ const TUN_MTU : usize = 255;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    simple_logger::SimpleLogger::new().env().init().unwrap();
+    simple_logger::SimpleLogger::new()
+        .with_level(log::LevelFilter::Debug)
+        .env()
+        .init().unwrap();
 
     let conf = config::Config::load().expect("Could not load config");
 
@@ -125,18 +128,21 @@ async fn main() -> std::io::Result<()> {
                     if let Some(ident) = packet.identification() {
                         debug!(" From {}-{}", ident.callsign, ident.ssid);
 
-                        let mut commentbuf = [0u8, 255];
-                        if let Ok(comment) = packet.comment(&mut commentbuf) {
-                            let m = ui::UIPacket {
-                                received_at: chrono::Utc::now(),
-                                from_callsign: ident.callsign.to_string(),
-                                from_ssid: ident.ssid,
-                                comment: Some(comment.to_owned())
-                            };
-                            match ws_broadcast.send(m) {
-                                Ok(num) => debug!("Send WS message to {num}"),
-                                Err(_) => debug!("No WS receivers currently"),
+                        let mut commentbuf = [0u8; 255];
+                        match packet.comment(&mut commentbuf) {
+                            Ok(comment) => {
+                                let m = ui::UIPacket {
+                                    received_at: chrono::Utc::now(),
+                                    from_callsign: ident.callsign.to_string(),
+                                    from_ssid: ident.ssid,
+                                    comment: Some(comment.to_owned())
+                                };
+                                match ws_broadcast.send(m) {
+                                    Ok(num) => debug!("Send WS message to {num}"),
+                                    Err(_) => debug!("No WS receivers currently"),
+                                }
                             }
+                            Err(e) => warn!("Decode packet comment error: {e}"),
                         }
                     }
 

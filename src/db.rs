@@ -103,7 +103,7 @@ impl Database {
                SELECT id, received_at, content
                FROM frames_received
                WHERE received_at > ?1
-               ORDER BY received_at DESC"#)
+               ORDER BY received_at"#)
             .bind(unix_timestamp)
             .fetch_all(&self.pool)
             .await?;
