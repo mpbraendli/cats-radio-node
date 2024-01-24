@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::io;
 
 use log::debug;
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, sqlite::SqliteRow, Row};
 
 #[derive(Clone)]
 pub struct Database {
@@ -10,11 +10,25 @@ pub struct Database {
     num_frames_received : u64,
 }
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(Debug)]
 pub struct Packet {
     pub id : i64,
-    pub received_at : i64,
+    pub received_at: chrono::DateTime<chrono::Utc>,
     pub content : Vec<u8>,
+}
+
+impl sqlx::FromRow<'_, SqliteRow> for Packet {
+    fn from_row(row: &SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            received_at: {
+                let row : i64 = row.try_get("received_at")?;
+                chrono::DateTime::from_timestamp(row, 0).expect("Convert timestamp to chrono")
+            },
+            content: row.try_get("content")?,
+
+        })
+    }
 }
 
 impl Database {
@@ -78,6 +92,19 @@ impl Database {
                ORDER BY received_at DESC
                LIMIT ?1"#)
             .bind(count)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(results)
+    }
+
+    pub async fn get_packets_since(&mut self, unix_timestamp: i64) -> anyhow::Result<Vec<Packet>> {
+        let results = sqlx::query_as(r#"
+               SELECT id, received_at, content
+               FROM frames_received
+               WHERE received_at > ?1
+               ORDER BY received_at DESC"#)
+            .bind(unix_timestamp)
             .fetch_all(&self.pool)
             .await?;
 

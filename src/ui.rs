@@ -1,3 +1,4 @@
+use std::time::{UNIX_EPOCH, SystemTime, Duration};
 use std::ops::ControlFlow;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -10,12 +11,12 @@ use axum::{
     extract::State,
     extract::{ws::{Message, WebSocket, WebSocketUpgrade}, ConnectInfo},
     http::StatusCode,
-    response::Html,
     response::IntoResponse,
     routing::{get, post},
 };
+use chrono::serde::ts_seconds;
 use futures::{StreamExt, SinkExt};
-use log::{debug, info, warn};
+use log::{debug, info, warn, error};
 use serde::Deserialize;
 use tower_http::services::ServeDir;
 
@@ -52,6 +53,19 @@ enum ActivePage {
     None,
 }
 
+impl ActivePage {
+    // Used by templates/head.html to include the correct js files in <head>
+    fn styles(&self) -> Vec<&'static str> {
+        match self {
+            ActivePage::Dashboard => vec![],
+            ActivePage::Chat => vec!["chat.js"],
+            ActivePage::Send => vec!["send.js"],
+            ActivePage::Settings => vec![],
+            ActivePage::None => vec![],
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "dashboard.html")]
 struct DashboardTemplate<'a> {
@@ -63,8 +77,10 @@ struct DashboardTemplate<'a> {
     packets: Vec<UIPacket>,
 }
 
-struct UIPacket {
-    pub received_at : i64,
+#[derive(Clone, serde::Serialize)]
+pub struct UIPacket {
+    #[serde(with = "ts_seconds")]
+    pub received_at: chrono::DateTime<chrono::Utc>,
 
     pub from_callsign : String,
     pub from_ssid : u8,
@@ -72,20 +88,12 @@ struct UIPacket {
     pub comment : Option<String>,
 }
 
-async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
-    let (conf, mut db, node_startup_time) = {
-        let st = state.lock().unwrap();
-        (st.conf.clone(), st.db.clone(), st.start_time.clone())
-    };
+impl UIPacket {
+    fn received_at_iso(&self) -> String {
+        self.received_at.to_string()
+    }
 
-    let packets = match db.get_most_recent_packets(10).await {
-        Ok(v) => v,
-        Err(e) => {
-            warn!("Dashboard will have empty packet list: {}", e);
-            Vec::new()
-        },
-    }.iter()
-    .filter_map(|db_packet| {
+    fn from_db_packet(db_packet: &crate::db::Packet) -> Option<Self> {
         let mut buf = [0; MAX_PACKET_LEN];
         match ham_cats::packet::Packet::fully_decode(&db_packet.content, &mut buf) {
             Ok(p) => {
@@ -113,7 +121,23 @@ async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'stati
                 None
             },
         }
-    })
+    }
+}
+
+async fn dashboard(State(state): State<SharedState>) -> DashboardTemplate<'static> {
+    let (conf, mut db, node_startup_time) = {
+        let st = state.lock().unwrap();
+        (st.conf.clone(), st.db.clone(), st.start_time.clone())
+    };
+
+    let packets = match db.get_most_recent_packets(10).await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("Dashboard will have empty packet list: {}", e);
+            Vec::new()
+        },
+    }.iter()
+    .filter_map(|p| UIPacket::from_db_packet(p))
     .collect();
 
     let node_startup_time = format!("{} UTC",
@@ -135,13 +159,39 @@ struct ChatTemplate<'a> {
     title: &'a str,
     page: ActivePage,
     conf: config::Config,
+    packets: Vec<UIPacket>,
 }
 
 async fn chat(State(state): State<SharedState>) -> ChatTemplate<'static> {
+
+    let (conf, mut db) = {
+        let st = state.lock().unwrap();
+        (st.conf.clone(), st.db.clone())
+    };
+
+    let time_start = SystemTime::now() - Duration::from_secs(6*3600);
+    let timestamp = time_start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+
+    let timestamp_i64 : i64 = timestamp.as_secs().try_into().unwrap();
+    let packets = match db.get_packets_since(timestamp_i64).await {
+        Ok(packets) => {
+            packets.iter()
+                .filter_map(|p| UIPacket::from_db_packet(p))
+                .collect()
+        },
+        Err(e) => {
+            error!("Failed to get packets since TS: {e}");
+            vec![]
+        }
+    };
+
     ChatTemplate {
         title: "Chat",
-        conf: state.lock().unwrap().conf.clone(),
+        conf,
         page: ActivePage::Chat,
+        packets
     }
 }
 
@@ -156,7 +206,7 @@ async fn ws_handler(
 
 async fn handle_socket(
     mut socket: WebSocket,
-    mut rx: tokio::sync::broadcast::Receiver<crate::WSChatMessage>,
+    mut rx: tokio::sync::broadcast::Receiver<UIPacket>,
     who: SocketAddr) {
     if socket.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
         info!("Pinged {who}...");

@@ -1,6 +1,42 @@
 {% include "head.html" %}
-<div class="content">
+<div class="content h-full">
   <h1>Chat</h1>
+  <div class="section h-[96%]">
+    <div class="m-2 h-full flex flex-col">
+      <div class="flex-1 grow">
+        <template id="message_template">
+          <div class="p-2 m-2 border-l-1 border-sky-100">
+            <div class="font-thin text-sky-400">Timestamp</div>
+            <div class="font-bold text-sky-900">FROM</div>
+            <div class="text-sky-800">Message</div>
+          </div>
+        </template>
+        {% for packet in packets %}
+        {% match packet.comment %}{% when Some with (comment) %}
+        <div class="p-2 border-l-2 border-sky-100 flex gap-4">
+          <div class="flex-none font-thin text-sky-400">{{ packet.received_at_iso()|e }}</div>
+          <div class="flex-none font-bold text-sky-900">{{ packet.from_callsign|e }}-{{ packet.from_ssid|e }}</div>
+          <div class="flex-1 text-sky-800">{{ comment|e }}
+          </div>
+        </div>
+        {% when None %}{% endmatch %}
+        {% endfor %}
+      </div>
+      <div class="flex-none grow-0 h-12">
+        <div class="flex">
+          <div class="flex-none">
+            <label for="dest">Message for:</label><input class="textinput" type="text" name="dest" value="" placeholder="callsign-ssid">
+          </div>
+          <div class="flex-1">
+            <input class="textinput w-full" type="text" name="message" value="" placeholder="Type your message here">
+          </div>
+          <div class="flex-none">
+            <button class="btn" type="button" onclick="btn_chat_send_message()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% include "foot.html" %}
 {# vi:set et sw=2 ts=2: #}

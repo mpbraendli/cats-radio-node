@@ -1,9 +1,11 @@
 {% include "head.html" %}
 <div class="content">
   <h1>Send a frame</h1>
-  <p>One main feature of CATS is that packets are constructed from Whiskers.
-  Each Whisker represents one possible attribute of data.</p>
-  <p>On this page you can select which whiskers to include in your packet.</p>
+  <div class="section">
+    <p>One main feature of CATS is that packets are constructed from Whiskers.
+    Each Whisker represents one possible attribute of data.</p>
+    <p>On this page you can select which whiskers to include in your packet.</p>
+  </div>
 
   <div class="section">
     <h2>Identification</h2>
@@ -19,11 +21,11 @@
       <p class="destination">
       <input class="textinput dest_callsign" type="text" placeholder="Type callsign here">
       <input class="textinput dest_ssid" type="text" placeholder="Type SSID here">
-      <button class="btn" type="button" onclick="btn_remove_destination(this)">Remove</button>
+      <button class="btn" type="button" onclick="btn_send_remove_destination(this)">Remove</button>
       </p>
     </template>
     <div id="destinations"></div>
-    <button class="btn" type="button" onclick="btn_add_destination()">Add destination</button>
+    <button class="btn" type="button" onclick="btn_send_add_destination()">Add destination</button>
   </div>
   <div class="section">
     <h2>Comment Whisker</h2>
@@ -58,7 +60,7 @@
   </div>-->
 
   <div class="section">
-    <button class="btn" type="button" onclick="btn_send_packet()">Send</button>
+    <button class="btn" type="button" onclick="btn_send_send()">Send</button>
   </div>
 </div>
 {% include "foot.html" %}

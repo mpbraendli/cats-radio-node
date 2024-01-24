@@ -10,17 +10,11 @@ mod radio;
 mod config;
 mod ui;
 
-#[derive(Clone, serde::Serialize)]
-struct WSChatMessage {
-    from: String,
-    message: String,
-}
-
 struct AppState {
     conf : config::Config,
     db : db::Database,
     transmit_queue : mpsc::Sender<Vec<u8>>,
-    ws_broadcast : broadcast::Sender<WSChatMessage>,
+    ws_broadcast : broadcast::Sender<ui::UIPacket>,
     start_time : chrono::DateTime<chrono::Utc>,
 }
 
@@ -133,9 +127,11 @@ async fn main() -> std::io::Result<()> {
 
                         let mut commentbuf = [0u8, 255];
                         if let Ok(comment) = packet.comment(&mut commentbuf) {
-                            let m = WSChatMessage {
-                                from: format!("{}-{}", ident.callsign, ident.ssid),
-                                message: comment.to_owned()
+                            let m = ui::UIPacket {
+                                received_at: chrono::Utc::now(),
+                                from_callsign: ident.callsign.to_string(),
+                                from_ssid: ident.ssid,
+                                comment: Some(comment.to_owned())
                             };
                             match ws_broadcast.send(m) {
                                 Ok(num) => debug!("Send WS message to {num}"),

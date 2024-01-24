@@ -10,7 +10,7 @@
     <h2>Ten most recent packets</h2>
     <ul>
       {% for packet in packets %}
-      <li>{{ packet.received_at|e }} <b>{{ packet.from_callsign|e }}-{{ packet.from_ssid|e }}</b>
+      <li>{{ packet.received_at_iso()|e }} <b>{{ packet.from_callsign|e }}-{{ packet.from_ssid|e }}</b>
         {% match packet.comment %}{% when Some with (val) %}{{ val|e }}{% when None %}N/A{% endmatch %}
         </li>
       {% endfor %}
