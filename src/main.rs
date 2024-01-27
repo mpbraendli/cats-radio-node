@@ -20,7 +20,9 @@ struct AppState {
 
 type SharedState = Arc<Mutex<AppState>>;
 
-const TUN_MTU : usize = 255;
+/* 8191 max packet size would give nearly 32 packets of size 255.
+ * Let's leave some space for other whiskers too. */
+const TUN_MTU : usize = 24*255;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -38,10 +40,7 @@ async fn main() -> std::io::Result<()> {
         tunconfig
             .address(tunnelconf.local_ip)
             .netmask(tunnelconf.netmask)
-            // TODO MTU could be increased to something a bit smaller than MAX_PACKET_LEN, but Arbitrary only have 255 byte
-            // payloads. Maybe propose a Tunnel whisker if it makes sense.
             .mtu(TUN_MTU.try_into().unwrap())
-            // TODO is .destination() needed?
             .up();
 
         #[cfg(target_os = "linux")]
@@ -151,9 +150,14 @@ async fn main() -> std::io::Result<()> {
                     }
 
                     if let Some(sink) = &mut tun_sink {
+                        let mut incoming = Vec::new();
                         for arb in packet.arbitrary_iter() {
+                            incoming.extend_from_slice(arb.0.as_slice());
+                        }
+
+                        if !incoming.is_empty() {
                             use futures::SinkExt;
-                            if let Err(e) = sink.send(tun::TunPacket::new(arb.0.to_vec())).await {
+                            if let Err(e) = sink.send(tun::TunPacket::new(incoming)).await {
                                 warn!("Failed to send to TUN: {}", e);
                             }
                         }
@@ -188,8 +192,10 @@ async fn main() -> std::io::Result<()> {
                                 .context("Invalid identification")?
                                 ).map_err(|e| anyhow!("Could not add identification to packet: {e}"))?;
 
-                            pkt.add_arbitrary(ham_cats::whisker::Arbitrary::new(ip_packet).unwrap())
-                                .map_err(|e| anyhow!("Could not add data to packet: {e}"))?;
+                            for part in ip_packet.chunks(255) {
+                                pkt.add_arbitrary(ham_cats::whisker::Arbitrary::new(part).unwrap())
+                                    .map_err(|e| anyhow!("Could not add data to packet: {e}"))?;
+                            }
 
                             let mut buf2 = [0; MAX_PACKET_LEN];
                             let mut data = ham_cats::buffer::Buffer::new_empty(&mut buf2);
@@ -204,7 +210,6 @@ async fn main() -> std::io::Result<()> {
                             },
                             Err(e) => warn!("Failed to prepare TUN packet: {e}"),
                         }
-
                     },
                     Ok(ip_packet) => {
                         println!("RX: too large packet: {} bytes", ip_packet.get_bytes().len());
