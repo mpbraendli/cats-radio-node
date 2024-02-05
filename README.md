@@ -1,8 +1,8 @@
 # CATS Radio Node
 
 This project contains a web user interface for controlling a
-[https://cats.radio](CATS Radio) device, consisting of a Raspberry Pi with a
-[https://gitlab.scd31.com/cats/pi-hardware](RF4463 hat).
+[CATS Radio](https://cats.radio) device, consisting of a Raspberry Pi with a
+[RF4463 hat](https://gitlab.scd31.com/cats/pi-hardware).
 
 ## Goals
 
