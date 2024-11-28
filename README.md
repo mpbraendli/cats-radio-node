@@ -20,7 +20,7 @@ To get cats-radio-node running on your raspberry pi
 1. `wget https://mpb.li/pv/cats-radio-node-20240128.tar.gz`
 1. `tar -xf cats-radio-node-20240128.tar.gz`
 1. `sudo ./cats-radio-node`
-1. And connect to it through HTTP on port 3000
+1. Connect to it using http://127.0.0.1:3000 using your browser
 
 If you want to compile it yourself:
 
