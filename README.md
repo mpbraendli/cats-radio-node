@@ -12,9 +12,12 @@ This project contains a web user interface for controlling a
 
 ## Installation
 
+A binary is available, compiled for armhf (32-bit). If you want to run an aarch64 (64-bit) OS, please compile
+cats-radio-node yourself. Instructions below.
+
 To get cats-radio-node running on your raspberry pi
 
-1. Prepare an SD card with latest Raspberry Pi OS, and boot your pi with it
+1. Prepare an SD card with latest 32-bit (armhf) Raspberry Pi OS, and boot your pi with it
 1. using `raspi-config`, enable the SPI Interface
 1. `mkdir cats-radio-node` and `cd cats-radio-node`
 1. `wget https://mpb.li/pv/cats-radio-node-20240128.tar.gz`
